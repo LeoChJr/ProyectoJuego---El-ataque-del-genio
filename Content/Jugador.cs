@@ -18,7 +18,7 @@ namespace ProyectoJuego.Content
         private int _screenHeight;             // Altura de la pantalla del juego
         private Texture2D _bulletTexture;      // Textura utilizada para las balas del jugador
         private List<DisparoJugador> _balas;   // Lista de balas activas disparadas por el jugador
-
+        public List<DisparoJugador> Balas => _balas;
         // Propiedades para acceder a ciertos campos desde fuera de la clase
         public Texture2D Texture => _texture;  // Textura del jugador
         public Vector2 Position => _position;  // Posición del jugador
@@ -27,14 +27,14 @@ namespace ProyectoJuego.Content
         // Constructor
         public Jugador(Texture2D texture, Texture2D bulletTexture, Vector2 position, float speed, int screenWidth, int screenHeight, int vida)
         {
-            _texture = texture;                // Asigna la textura del jugador
-            _bulletTexture = bulletTexture;    // Asigna la textura para las balas
-            _position = position;              // Posición inicial del jugador
-            _speed = speed;                    // Velocidad de movimiento
-            _vida = vida;                      // Vida inicial del jugador
-            _screenWidth = screenWidth;        // Ancho de la pantalla
-            _screenHeight = screenHeight;      // Altura de la pantalla
-            _balas = new List<DisparoJugador>();// Inicializa la lista de balas
+            _texture = texture;
+            _bulletTexture = bulletTexture;
+            _position = position;
+            _speed = speed;
+            _vida = vida;
+            _screenWidth = screenWidth;
+            _screenHeight = screenHeight;
+            _balas = new List<DisparoJugador>(); // Inicializa la lista de balas
         }
 
         // Método que actualiza el estado del jugador
@@ -100,16 +100,19 @@ namespace ProyectoJuego.Content
             // Calcula la posición inicial de la bala
             Vector2 bulletPosition = new Vector2(
                 _position.X + _texture.Width / 2 - _bulletTexture.Width / 2,
-                _position.Y
+                _position.Y + _texture.Height // Para que salga desde debajo del jugador
             );
 
-            // Dirección inicial de la bala (hacia arriba)
-            Vector2 direction = new Vector2(0, -1);
+            // Dirección inicial de la bala (hacia abajo)
+            Vector2 direction = new Vector2(0, 1); // Cambiado de (0, -1) a (0, 1)
 
             // Crea una nueva bala con la textura, posición, dirección y velocidad
             DisparoJugador bala = new DisparoJugador(_bulletTexture, bulletPosition, direction, 5f);
             _balas.Add(bala); // Añade la bala a la lista de balas activas
+            //musica
+            //_playerShootSound.Play();
         }
+
 
         // Método para reducir la vida del jugador
         public void ReducirVida(int cantidad)

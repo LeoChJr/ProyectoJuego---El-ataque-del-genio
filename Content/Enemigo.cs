@@ -24,22 +24,41 @@ namespace ProyectoJuego.Content
         private float _rightBoundary;            // Límite derecho del movimiento del enemigo
         private bool _movingRight;               // Indica si el enemigo se está moviendo hacia la derecha
 
-        private int _vida;                       // Vida restante del enemigo
+        private int _vida; // Vida del enemigo
 
+        // Propiedad para acceder a la vida desde fuera de la clase
+        public int Vida => _vida;
+        public Vector2 Position => _position;
         // Constructor de la clase Enemigo
-        public Enemigo(Texture2D texture, Texture2D fireballTexture, Vector2 position, float speed, float leftBoundary, float rightBoundary)
+        public Texture2D Texture => _texture;
+        public bool DisparoRealizado { get; private set; }
+        private Vector2 _size; // Tamaño del enemigo (ancho y alto)
+        public Vector2 Size => _size;
+
+
+        public Enemigo(Texture2D texture, Texture2D fireballTexture, Vector2 position, float speed, float leftBoundary, float rightBoundary, Vector2 size)
         {
-            _texture = texture;                   // Asigna la textura del enemigo
-            _fireballTexture = fireballTexture;   // Asigna la textura de la bola de fuego
-            _position = position;                 // Inicializa la posición del enemigo
-            _speed = speed;                       // Establece la velocidad de movimiento
-            _bolasDeFuego = new List<DisparoEnemigo>(); // Inicializa la lista de disparos
-            _fireballCooldown = 2f;               // Tiempo de espera entre disparos (en segundos)
-            _timeSinceLastShot = 0f;              // Reinicia el tiempo desde el último disparo
-            _leftBoundary = leftBoundary;         // Establece el límite izquierdo
-            _rightBoundary = rightBoundary;       // Establece el límite derecho
-            _movingRight = true;                  // Inicia moviéndose hacia la derecha
-            _vida = 2;                            // Vida inicial del enemigo
+            _texture = texture;
+            _fireballTexture = fireballTexture;
+            _position = position;
+            _speed = speed;
+            _leftBoundary = leftBoundary;
+            _rightBoundary = rightBoundary;
+            _movingRight = true;
+            _size = size;
+            _bolasDeFuego = new List<DisparoEnemigo>(); // Inicializa la lista
+        }
+        // Método para recibir daño
+        public void RecibirDaño(int daño)
+        {
+            _vida -= daño; // Resta el daño a la vida del enemigo
+
+            // Verifica si el enemigo muere
+            if (_vida <= 0)
+            {
+                _vida = 0; // Asegura que no sea negativa
+                           // Aquí puedes agregar lógica para eliminar al enemigo, efectos, etc.
+            }
         }
 
         // Actualiza la lógica del enemigo en cada frame
@@ -48,64 +67,86 @@ namespace ProyectoJuego.Content
             // Movimiento del enemigo entre los límites
             if (_movingRight)
             {
-                _position.X += _speed;            // Mueve al enemigo hacia la derecha
-                if (_position.X >= _rightBoundary) // Cambia de dirección si llega al límite derecho
-                {
-                    _movingRight = false;
-                }
+                _position.X += _speed;
+                if (_position.X >= _rightBoundary) _movingRight = false;
             }
             else
             {
-                _position.X -= _speed;            // Mueve al enemigo hacia la izquierda
-                if (_position.X <= _leftBoundary) // Cambia de dirección si llega al límite izquierdo
-                {
-                    _movingRight = true;
-                }
+                _position.X -= _speed;
+                if (_position.X <= _leftBoundary) _movingRight = true;
             }
 
-            // Manejo de disparos
-            _timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds; // Incrementa el tiempo desde el último disparo
-            if (_timeSinceLastShot >= _fireballCooldown) // Comprueba si ya puede disparar
+            // Manejo del disparo (limita a 1 bala activa)
+            _timeSinceLastShot += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (_timeSinceLastShot >= _fireballCooldown)
             {
-                Disparar(jugadorPosition);       // Llama al método para disparar
-                _timeSinceLastShot = 0f;         // Reinicia el contador
+                Disparar(jugadorPosition); // Solo dispara si no hay balas activas
+                _timeSinceLastShot = 0f;
             }
 
-            // Actualiza cada bola de fuego activa
+            // Actualiza cada bala de fuego activa
             for (int i = _bolasDeFuego.Count - 1; i >= 0; i--)
             {
-                _bolasDeFuego[i].Update(gameTime); // Actualiza la posición de cada disparo
+                _bolasDeFuego[i].Update(gameTime);
 
-                // Comprueba colisión entre la bola de fuego y el jugador
+                // Comprueba colisión con el jugador
                 if (ColisionaConJugador(_bolasDeFuego[i], jugador))
                 {
-                    jugador.ReducirVida(10);    // Resta vida al jugador (10 puntos de daño)
-                    _bolasDeFuego.RemoveAt(i); // Elimina la bola de fuego tras causar daño
+                    jugador.ReducirVida(10);    // Resta vida al jugador
+                    _bolasDeFuego.RemoveAt(i); // Elimina la bala tras causar daño
+                    continue; // Pasa al siguiente elemento después de eliminar
                 }
 
-                // Nota: Aquí se puede añadir lógica para eliminar disparos fuera de la pantalla
+                // Elimina disparos fuera de la pantalla
+                else if (_bolasDeFuego[i].Position.Y > 1000 || _bolasDeFuego[i].Position.Y < 0)
+                {
+                    _bolasDeFuego.RemoveAt(i); // Elimina la bala fuera de pantalla
+                    continue; // Pasa al siguiente elemento después de eliminar
+                }
             }
         }
+
 
         // Dibuja al enemigo y sus disparos en la pantalla
         public void Draw(SpriteBatch spriteBatch)
         {
-            spriteBatch.Draw(_texture, _position, Color.White); // Dibuja al enemigo
+            // Dibuja al enemigo ajustando su tamaño
+            spriteBatch.Draw(
+        _texture,
+        new Rectangle((int)_position.X, (int)_position.Y, (int)_size.X, (int)_size.Y),
+        Color.White
+    );
 
-            // Dibuja cada disparo activo
-            foreach (var bolaDeFuego in _bolasDeFuego)
+            // Dibuja la única bala activa (si la hay)
+            if (_bolasDeFuego.Count > 0)
             {
-                bolaDeFuego.Draw(spriteBatch);
+                foreach (var bolaDeFuego in _bolasDeFuego)
+                {
+                    bolaDeFuego.Draw(spriteBatch);
+                }
             }
         }
+
 
         // Genera un nuevo disparo en dirección al jugador
         private void Disparar(Vector2 jugadorPosition)
         {
-            Vector2 direction = jugadorPosition - _position; // Calcula la dirección hacia el jugador
-            direction.Normalize();                          // Normaliza la dirección
-            DisparoEnemigo nuevaBola = new DisparoEnemigo(_fireballTexture, _position, direction, 10f); // Crea una nueva bola de fuego
-            _bolasDeFuego.Add(nuevaBola);                   // Añade el disparo a la lista
+            if (_bolasDeFuego.Count > 0)
+            {
+                return; // No dispara si ya hay una bala activa
+            }
+
+            // Calcula la dirección hacia el jugador
+            Vector2 direction = jugadorPosition - _position;
+            direction.Normalize();
+
+            // Crea una nueva bala
+            DisparoEnemigo nuevaBola = new DisparoEnemigo(_fireballTexture, _position, direction, 10f);
+
+            // Añade la bala a la lista
+            _bolasDeFuego.Add(nuevaBola);
+            //musica
+            //_enemyShootSound.Play();
         }
 
         // Comprueba si un disparo colisiona con el jugador

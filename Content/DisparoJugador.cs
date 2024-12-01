@@ -16,7 +16,7 @@ namespace ProyectoJuego.Content
         private Vector2 _position;      // Posición actual de la bala en el mundo del juego
         private Vector2 _direction;     // Dirección en la que se mueve la bala
         private float _speed;           // Velocidad de movimiento de la bala
-
+        public Texture2D Texture => _texture;
         // Propiedad para acceder a la posición de la bala desde fuera de la clase
         public Vector2 Position => _position; // Devuelve la posición actual de la bala
 
