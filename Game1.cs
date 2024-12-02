@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Media;
 using ProyectoJuego.Content;
+using SharpDX.Direct3D9;
 using System;
 using System.Collections.Generic;
 using Color = Microsoft.Xna.Framework.Color;
@@ -16,9 +17,11 @@ namespace ProyectoJuego
     {
         MainMenu,  // Menú principal
         Playing,   // Jugando
-        Paused,    // Pausado
-        GameOver   // Fin del juego
+        Paused,    // Pausado//nuevo
+        GameOver,  // Fin del juego
+        Victory    // Nuevo estado de victoria//nuevo 
     }
+
 
     public class Game1 : Game
     {
@@ -48,6 +51,7 @@ namespace ProyectoJuego
         private float _spawnCooldown; // Tiempo entre la generación de obstáculos
         private float _timeSinceLastSpawn; // Tiempo transcurrido desde el último obstáculo
 
+        
         // Constructor del juego
         public Game1()
         {
@@ -56,6 +60,7 @@ namespace ProyectoJuego
             IsMouseVisible = true;                       // Muestra el cursor
             _graphics.PreferredBackBufferWidth = 1280;   // Ancho de pantalla
             _graphics.PreferredBackBufferHeight = 1000;  // Alto de pantalla
+            
             _graphics.ApplyChanges();                   // Aplica los cambios
         }
 
@@ -84,10 +89,11 @@ namespace ProyectoJuego
             //MediaPlayer.Volume = 0.5f;     // Ajustar volumen de la música
             //MediaPlayer.Play(_backgroundMusic);
             //________________________________________________________________________________________
+            //eso seria para el sonido pero no llegamos a ponerlo
             // Carga de texturas
-            Texture2D enemyTexture = Content.Load<Texture2D>("autoPolicia2");
+            Texture2D enemyTexture = Content.Load<Texture2D>("nuevoAutoPolicia");//nuevo diseño
             Texture2D fireballTexture = Content.Load<Texture2D>("balaPolicia");
-            Texture2D playerTexture = Content.Load<Texture2D>("autoJugador2");
+            Texture2D playerTexture = Content.Load<Texture2D>("nuevoAutoJugador");//nuevo diseño
             Texture2D buttonTexture = Content.Load<Texture2D>("button");
             font = Content.Load<SpriteFont>("font");
             Texture2D bulletTexture = Content.Load<Texture2D>("balaJugador2");
@@ -105,19 +111,18 @@ namespace ProyectoJuego
                 8f,
                 _graphics.PreferredBackBufferWidth,
                 _graphics.PreferredBackBufferHeight,
-                10
+                100
             );
 
             // Inicializa al enemigo
             // Crear un enemigo con tamaño personalizado
             _enemigo = new Enemigo(
-                Content.Load<Texture2D>("autoPolicia2"), // Textura del enemigo
-                Content.Load<Texture2D>("balaPolicia"), // Textura de las balas
-                new Vector2(400, 700), // Posición inicial
-                6f,                    // Velocidad
-                100f,                  // Límite izquierdo
-                775f,                  // Límite derecho
-                new Vector2(64, 32)    // Tamaño personalizado (ancho: 64, alto: 32)
+                Content.Load<Texture2D>("nuevoAutoPolicia"),
+                Content.Load<Texture2D>("balaPolicia"),
+                new Vector2(400, 700),
+                6f,
+                100f,
+                775f
             );
 
         }
@@ -129,6 +134,18 @@ namespace ProyectoJuego
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
                 Keyboard.GetState().IsKeyDown(Keys.Escape))
                 Exit();
+
+            var keyboardState = Keyboard.GetState();
+
+            // Cambiar entre Pausado y Jugando al presionar 'P'
+            if (keyboardState.IsKeyDown(Keys.P) && _currentState != GameState.Paused)
+            {
+                _currentState = GameState.Paused; // Cambiar al estado Pausado
+            }
+            else if (keyboardState.IsKeyDown(Keys.P) && _currentState == GameState.Paused)
+            {
+                _currentState = GameState.Playing; // Volver a jugar
+            }
 
             switch (_currentState)
             {
@@ -161,9 +178,16 @@ namespace ProyectoJuego
                         _enemigo.Update(gameTime, _jugador.Position, _jugador);
 
                         // Reproduce el sonido de disparo del enemigo si dispara
-                        if (_enemigo.DisparoRealizado) // Supón que existe esta propiedad en el enemigo
+                        if (_enemigo.DisparoRealizado)
                         {
                             //_enemyShootSound.Play();
+                        }
+
+                        // Verifica si el enemigo ha sido derrotado (vida <= 0)
+                        if (_enemigo.Vida <= 0)
+                        {
+                            _enemigo = null;  // Elimina el enemigo
+                            _currentState = GameState.Victory; // Cambia el estado del juego a "Victoria"
                         }
                     }
 
@@ -183,6 +207,7 @@ namespace ProyectoJuego
                             if (_enemigo.Vida <= 0)
                             {
                                 _enemigo = null; // Elimina al enemigo
+                                _currentState = GameState.Victory; // Cambia el estado del juego a "Victoria"
                             }
                         }
                     }
@@ -217,7 +242,7 @@ namespace ProyectoJuego
                         _obstaculos[i].Update(gameTime);
 
                         // Comprueba colisión con el jugador
-                        if (ColisionaConJugador(_obstaculos[i]))
+                        if (ColisionaConJugador(_obstaculos[i], _jugador))
                         {
                             //_collisionSound.Play(); // Sonido al chocar con un obstáculo
                             _jugador.ReducirVida(1); // Resta 1 punto de vida
@@ -236,16 +261,35 @@ namespace ProyectoJuego
                         MediaPlayer.Pause(); // Pausa la música al terminar el juego
                         _currentState = GameState.GameOver;
                     }
+
+                    break;
+
+                case GameState.Paused:
+                    // Lógica de la pausa: no actualiza el juego
+                    MediaPlayer.Pause(); // Pausa la música cuando está en pausa
                     break;
 
                 case GameState.GameOver:
                     MediaPlayer.Pause(); // Pausa la música si está en Game Over
-                    var keyboardState = Keyboard.GetState();
-                    if (keyboardState.IsKeyDown(Keys.R))
+                    var keyboardStateGameOver = Keyboard.GetState();
+                    if (keyboardStateGameOver.IsKeyDown(Keys.R))
                     {
                         ResetGame(); // Reinicia el juego
                     }
-                    else if (keyboardState.IsKeyDown(Keys.Escape))
+                    else if (keyboardStateGameOver.IsKeyDown(Keys.Escape))
+                    {
+                        Exit(); // Sale del juego
+                    }
+                    break;
+
+                case GameState.Victory:
+                    // Si el estado es Victory, muestra algo de victoria
+                    var victoryKeyboardState = Keyboard.GetState();
+                    if (victoryKeyboardState.IsKeyDown(Keys.R))
+                    {
+                        ResetGame(); // Reinicia el juego
+                    }
+                    else if (victoryKeyboardState.IsKeyDown(Keys.Escape))
                     {
                         Exit(); // Sale del juego
                     }
@@ -257,6 +301,7 @@ namespace ProyectoJuego
 
 
 
+
         // Reinicia el juego
         private void ResetGame()
         {
@@ -264,87 +309,111 @@ namespace ProyectoJuego
 
             // Reinicia el jugador
             _jugador = new Jugador(
-                Content.Load<Texture2D>("autoJugador2"),
+                Content.Load<Texture2D>("nuevoAutoJugador"),
                 Content.Load<Texture2D>("balaJugador2"),
                 new Vector2(600, 100),
                 8f,
                 _graphics.PreferredBackBufferWidth,
                 _graphics.PreferredBackBufferHeight,
-                10
+                100
             );
 
             // Reinicia el enemigo
             // Crear un enemigo con tamaño personalizado
             _enemigo = new Enemigo(
-                Content.Load<Texture2D>("autoPolicia2"), // Textura del enemigo
-                Content.Load<Texture2D>("balaPolicia"), // Textura de las balas
-                new Vector2(400, 700), // Posición inicial
-                6f,                    // Velocidad
-                100f,                  // Límite izquierdo
-                775f,                  // Límite derecho
-                new Vector2(64, 32)    // Tamaño personalizado (ancho: 64, alto: 32)
+                Content.Load<Texture2D>("nuevoAutoPolicia"),
+                Content.Load<Texture2D>("balaPolicia"),
+                new Vector2(400, 700),
+                6f,
+                100f,
+                775f
             );
 
         }
 
         // Dibuja el juego
         protected override void Draw(GameTime gameTime)
-        {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+{
+    GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            _spriteBatch.Begin();
+    _spriteBatch.Begin();
 
-            switch (_currentState)
+    switch (_currentState)
+    {
+        case GameState.MainMenu:
+            _mainMenu.Draw(_spriteBatch); // Dibuja el menú principal
+            break;
+
+        case GameState.Playing:
+            // Dibuja dos fondos para el desplazamiento continuo
+            _spriteBatch.Draw(
+                _gameBackgroundTexture,
+                new Rectangle(0, (int)-_backgroundOffsetY, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight),
+                Color.White
+            );
+
+            _spriteBatch.Draw(
+                _gameBackgroundTexture,
+                new Rectangle(0, (int)(-_backgroundOffsetY + _graphics.PreferredBackBufferHeight), _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight),
+                Color.White
+            );
+
+            // Dibuja todos los obstáculos
+            foreach (var obstaculo in _obstaculos)
             {
-                case GameState.MainMenu:
-                    _mainMenu.Draw(_spriteBatch); // Dibuja el menú principal
-                    break;
-
-                case GameState.Playing:
-                    // Dibuja dos fondos para el desplazamiento continuo
-                    _spriteBatch.Draw(
-                        _gameBackgroundTexture,
-                        new Rectangle(0, (int)-_backgroundOffsetY, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight),
-                        Color.White
-                    );
-
-                    _spriteBatch.Draw(
-                        _gameBackgroundTexture,
-                        new Rectangle(0, (int)(-_backgroundOffsetY + _graphics.PreferredBackBufferHeight), _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight),
-                        Color.White
-                    );
-
-                    // Dibuja todos los obstáculos
-                    foreach (var obstaculo in _obstaculos)
-                    {
-                        obstaculo.Draw(_spriteBatch);
-                    }
-
-                    // Dibuja al jugador
-                    _jugador.Draw(_spriteBatch);
-
-                    // Verifica si _enemigo no es null antes de dibujarlo
-                    if (_enemigo != null)
-                    {
-                        _enemigo.Draw(_spriteBatch); // Dibuja al enemigo si no es null
-                    }
-                    break;
-
-                case GameState.GameOver:
-                    // Dibuja la pantalla de Game Over
-                    _spriteBatch.DrawString(font, "Game Over",
-                        new Vector2(_graphics.PreferredBackBufferWidth / 2 - 100,
-                                    _graphics.PreferredBackBufferHeight / 2 - 50), Color.Red);
-                    _spriteBatch.DrawString(font, "Presiona R para reiniciar o Esc para salir",
-                        new Vector2(_graphics.PreferredBackBufferWidth / 2 - 200,
-                                    _graphics.PreferredBackBufferHeight / 2 + 50), Color.White);
-                    break;
+                obstaculo.Draw(_spriteBatch);
             }
 
-            _spriteBatch.End();
+            // Dibuja al jugador y su barra de vida
+            _jugador.Draw(_spriteBatch);
+            _jugador.DrawHealthBar(_spriteBatch);
 
-            base.Draw(gameTime);
-        }
+            // Dibuja al enemigo y su barra de vida
+            if (_enemigo != null)
+            {
+                _enemigo.Draw(_spriteBatch);
+                _enemigo.DrawHealthBar(_spriteBatch);
+            }
+            break;
+
+        case GameState.Paused:
+            // Dibuja la pantalla de pausa
+            _spriteBatch.DrawString(font, "PAUSE", 
+                new Vector2(_graphics.PreferredBackBufferWidth / 2 - 50, 
+                            _graphics.PreferredBackBufferHeight / 2 - 25), Color.White);
+            _spriteBatch.DrawString(font, "Presiona P para reanudar", 
+                new Vector2(_graphics.PreferredBackBufferWidth / 2 - 100, 
+                            _graphics.PreferredBackBufferHeight / 2 + 25), Color.White);
+            break;
+
+        case GameState.GameOver:
+            // Dibuja la pantalla de Game Over
+            _spriteBatch.DrawString(font, "Game Over",
+                new Vector2(_graphics.PreferredBackBufferWidth / 2 - 100,
+                            _graphics.PreferredBackBufferHeight / 2 - 50), Color.Red);
+            _spriteBatch.DrawString(font, "Presiona R para reiniciar o Esc para salir",
+                new Vector2(_graphics.PreferredBackBufferWidth / 2 - 200,
+                            _graphics.PreferredBackBufferHeight / 2 + 50), Color.White);
+            break;
+
+        case GameState.Victory:
+            // Cambia los caracteres especiales por su equivalente sin caracteres especiales
+            _spriteBatch.DrawString(font, "GANASTE!",
+                new Vector2(_graphics.PreferredBackBufferWidth / 2 - 100,
+                            _graphics.PreferredBackBufferHeight / 2 - 50), Color.Green);
+            _spriteBatch.DrawString(font, "Presiona R para reiniciar o Esc para salir",
+                new Vector2(_graphics.PreferredBackBufferWidth / 2 - 200,
+                            _graphics.PreferredBackBufferHeight / 2 + 50), Color.White);
+            break;
+    }
+
+    _spriteBatch.End();
+
+    base.Draw(gameTime);
+}
+
+
+
 
 
 
@@ -353,34 +422,41 @@ namespace ProyectoJuego
         {
             _currentState = GameState.Playing;
         }
-        private bool ColisionaConJugador(Obstaculo obstaculo)//falta poner que quita vida
+        private bool ColisionaConJugador(Obstaculo obstaculo, Jugador jugador)
         {
+            // Escala para el obstáculo y el jugador
+            float escalaObstaculo = 0.25f; // Ajusta el ancho del obstáculo
+            float escalaJugador = 0.25f;   // Ajusta el ancho del jugador
+            float escalaJugadorAltura = 0.5f; // Ajusta la altura del jugador
+
+            // Rectángulo de colisión para el obstáculo, con escala aplicada
             Rectangle obstaculoRect = new Rectangle(
                 (int)obstaculo.Position.X,
                 (int)obstaculo.Position.Y,
-                _obstaculoTexture.Width,
-                _obstaculoTexture.Height
+                (int)(_obstaculoTexture.Width * escalaObstaculo),  // Aplica la escala al ancho
+                (int)(_obstaculoTexture.Height * escalaObstaculo)  // Aplica la escala a la altura
             );
 
+            // Rectángulo de colisión para el jugador, aplicando las escalas
             Rectangle jugadorRect = new Rectangle(
-                (int)_jugador.Position.X,
-                (int)_jugador.Position.Y,
-                _jugador.Texture.Width,
-                _jugador.Texture.Height
+                (int)jugador.Position.X,
+                (int)jugador.Position.Y,
+                (int)(jugador.Texture.Width * escalaJugador),       // Escala el ancho del jugador
+                (int)(jugador.Texture.Height * escalaJugadorAltura)  // Escala la altura del jugador
             );
 
-            if (obstaculoRect.Intersects(jugadorRect))
-            {
-                // Reproducir el sonido de colisión
-                //_collisionSound.Play();
-                _jugador.ReducirVida(10); // Ejemplo: reduce vida
-                return true;
-            }
-
-            return false;
+            // Devuelve true si los rectángulos se intersectan (indica colisión)
+            return obstaculoRect.Intersects(jugadorRect); // Verifica la colisión
         }
+
+
+
+
+
+
         private bool ColisionaConEnemigo(DisparoJugador bala, Enemigo enemigo)
         {
+            // Rectángulo de colisión para la bala
             Rectangle balaRect = new Rectangle(
                 (int)bala.Position.X,
                 (int)bala.Position.Y,
@@ -388,15 +464,24 @@ namespace ProyectoJuego
                 bala.Texture.Height
             );
 
+            // Ajustes para hacer la colisión más precisa, con un margen menor
+            int ajusteX = 400;     // Ajuste de posición X (reduce el margen)
+            int ajusteY = 700;     // Ajuste de posición Y (reduce el margen)
+            int ajusteAncho = 500; // Ajuste de ancho (reduce el área de colisión)
+            int ajusteAltura = 700 ; // Ajuste de altura (reduce el área de colisión)
+
+            // Rectángulo de colisión para el enemigo, con los ajustes para hacer la colisión más ajustada
             Rectangle enemigoRect = new Rectangle(
-                (int)enemigo.Position.X,
-                (int)enemigo.Position.Y,
-                (int)enemigo.Size.X, // Usa el ancho ajustado
-                (int)enemigo.Size.Y  // Usa el alto ajustado
+                (int)enemigo.Position.X + ajusteX,  // Posición X ajustada
+                (int)enemigo.Position.Y + ajusteY,  // Posición Y ajustada
+                enemigo.Texture.Width - ajusteAncho,  // Ancho ajustado para reducir la colisión
+                enemigo.Texture.Height - ajusteAltura  // Altura ajustada para reducir la colisión
             );
 
+            // Verifica si los rectángulos de la bala y el enemigo se intersectan
             return balaRect.Intersects(enemigoRect);
         }
+        //para detextare donde ffue el impacto
 
 
 

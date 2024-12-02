@@ -23,20 +23,20 @@ namespace ProyectoJuego.Content
         private float _leftBoundary;             // Límite izquierdo del movimiento del enemigo
         private float _rightBoundary;            // Límite derecho del movimiento del enemigo
         private bool _movingRight;               // Indica si el enemigo se está moviendo hacia la derecha
+        private bool _enemigoMuerto = false;     // Campo para verificar si el enemigo ha muerto
+        public bool EnemigoMuerto => _enemigoMuerto;  // Propiedad pública para acceder al estado
 
         private int _vida; // Vida del enemigo
 
         // Propiedad para acceder a la vida desde fuera de la clase
         public int Vida => _vida;
         public Vector2 Position => _position;
-        // Constructor de la clase Enemigo
-        public Texture2D Texture => _texture;
+        public Texture2D Texture => _texture;  // Propiedad para acceder a la textura
+
         public bool DisparoRealizado { get; private set; }
-        private Vector2 _size; // Tamaño del enemigo (ancho y alto)
-        public Vector2 Size => _size;
 
-
-        public Enemigo(Texture2D texture, Texture2D fireballTexture, Vector2 position, float speed, float leftBoundary, float rightBoundary, Vector2 size)
+        // Constructor de la clase Enemigo
+        public Enemigo(Texture2D texture, Texture2D fireballTexture, Vector2 position, float speed, float leftBoundary, float rightBoundary)
         {
             _texture = texture;
             _fireballTexture = fireballTexture;
@@ -45,9 +45,10 @@ namespace ProyectoJuego.Content
             _leftBoundary = leftBoundary;
             _rightBoundary = rightBoundary;
             _movingRight = true;
-            _size = size;
             _bolasDeFuego = new List<DisparoEnemigo>(); // Inicializa la lista
+            _vida = 100; // Inicializa la vida del enemigo
         }
+
         // Método para recibir daño
         public void RecibirDaño(int daño)
         {
@@ -57,7 +58,7 @@ namespace ProyectoJuego.Content
             if (_vida <= 0)
             {
                 _vida = 0; // Asegura que no sea negativa
-                           // Aquí puedes agregar lógica para eliminar al enemigo, efectos, etc.
+                _enemigoMuerto = true; // Marca al enemigo como muerto
             }
         }
 
@@ -106,27 +107,18 @@ namespace ProyectoJuego.Content
             }
         }
 
-
         // Dibuja al enemigo y sus disparos en la pantalla
         public void Draw(SpriteBatch spriteBatch)
         {
-            // Dibuja al enemigo ajustando su tamaño
-            spriteBatch.Draw(
-        _texture,
-        new Rectangle((int)_position.X, (int)_position.Y, (int)_size.X, (int)_size.Y),
-        Color.White
-    );
+            // Dibuja al enemigo usando su textura y posición
+            spriteBatch.Draw(_texture, _position, Color.White);
 
-            // Dibuja la única bala activa (si la hay)
-            if (_bolasDeFuego.Count > 0)
+            // Dibuja las balas activas si existen
+            foreach (var bolaDeFuego in _bolasDeFuego)
             {
-                foreach (var bolaDeFuego in _bolasDeFuego)
-                {
-                    bolaDeFuego.Draw(spriteBatch);
-                }
+                bolaDeFuego.Draw(spriteBatch);
             }
         }
-
 
         // Genera un nuevo disparo en dirección al jugador
         private void Disparar(Vector2 jugadorPosition)
@@ -145,36 +137,56 @@ namespace ProyectoJuego.Content
 
             // Añade la bala a la lista
             _bolasDeFuego.Add(nuevaBola);
-            //musica
-            //_enemyShootSound.Play();
         }
 
         // Comprueba si un disparo colisiona con el jugador
         private bool ColisionaConJugador(DisparoEnemigo bolaDeFuego, Jugador jugador)
         {
-            // Escala para ajustar el tamaño del rectángulo de colisión de la bola de fuego
-            float escalaBala = 0.1f;
-            float escalaAuto = 0.25f; // Escala para el ancho del jugador
-            float escalaauto2 = 0.5f; // Escala para el alto del jugador
+            // Escala para reducir el tamaño de la bola de fuego
+            float escalaBolaDeFuego = 0.01f;  // Ajusta el valor para hacer la colisión más pequeña (0.5 = 50% del tamaño original)
 
-            // Rectángulo de colisión para la bola de fuego
-            Rectangle bolaDeFuegoRect = new Rectangle(
+            // Rectángulo de colisión para la bola de fuego con escala aplicada
+            Rectangle balaRect = new Rectangle(
                 (int)bolaDeFuego.Position.X,
                 (int)bolaDeFuego.Position.Y,
-                (int)(bolaDeFuego.Texture.Width * escalaBala),
-                (int)(bolaDeFuego.Texture.Height * escalaBala)
+                (int)(bolaDeFuego.Texture.Width * escalaBolaDeFuego),  // Aplica la escala en el ancho
+                (int)(bolaDeFuego.Texture.Height * escalaBolaDeFuego)  // Aplica la escala en la altura
             );
 
-            // Rectángulo de colisión para el jugador
+            // Rectángulo de colisión para el jugador, con escala aplicada si es necesario
             Rectangle jugadorRect = new Rectangle(
                 (int)jugador.Position.X,
                 (int)jugador.Position.Y,
-                (int)(jugador.Texture.Width * escalaAuto),
-                (int)(jugador.Texture.Height * escalaauto2)
+                (int)(jugador.Texture.Width * 0.25f),  // Ajuste del ancho del jugador
+                (int)(jugador.Texture.Height * 0.5f)   // Ajuste de la altura del jugador
             );
 
             // Devuelve true si los rectángulos se intersectan (indica colisión)
-            return bolaDeFuegoRect.Intersects(jugadorRect);
+            return balaRect.Intersects(jugadorRect);
         }
+
+
+        public void DrawHealthBar(SpriteBatch spriteBatch)
+        {
+            // Dimensiones de la barra de vida
+            int barWidth = 100;// Ancho de la barra
+            int barHeight = 30; // Alto de la barra
+            int healthWidth = (int)((_vida / 100f) * barWidth); // Proporción de vida restante
+
+            // Dibuja la barra de fondo (gris)
+            spriteBatch.Draw(
+                _texture,
+                new Rectangle((int)_position.X, (int)_position.Y - 20, barWidth, barHeight),
+                Color.Yellow
+            );
+
+            // Dibuja la barra de vida (roja)
+            spriteBatch.Draw(
+                _texture,
+                new Rectangle((int)_position.X, (int)_position.Y - 20, healthWidth, barHeight),
+                Color.Red
+            );
+        }
+
     }
 }

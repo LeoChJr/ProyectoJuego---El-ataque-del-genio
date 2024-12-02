@@ -54,7 +54,7 @@ namespace ProyectoJuego.Content
             _position.Y = MathHelper.Clamp(_position.Y, 0, _screenHeight - _texture.Height);
 
             // Movimiento hacia la izquierda
-            if (keyboardState.IsKeyDown(Keys.A) && _position.X > 250)
+            if (keyboardState.IsKeyDown(Keys.A) && _position.X > 50)
                 _position.X -= _speed;
 
             // Movimiento hacia la derecha
@@ -95,23 +95,36 @@ namespace ProyectoJuego.Content
         }
 
         // Método para disparar una bala
+        // Método para disparar una bala
+        // Método para disparar una bala
         private void Disparar()
         {
-            // Calcula la posición inicial de la bala
-            Vector2 bulletPosition = new Vector2(
-                _position.X + _texture.Width / 2 - _bulletTexture.Width / 2,
-                _position.Y + _texture.Height // Para que salga desde debajo del jugador
+            // Calcula la posición inicial de la bala desde el lado derecho e izquierdo del jugador
+            Vector2 bulletPositionLeft = new Vector2(
+                _position.X - _bulletTexture.Width/30, // A la izquierda del jugador
+                _position.Y + _texture.Height  - _bulletTexture.Height  // Centrado verticalmente
             );
 
-            // Dirección inicial de la bala (hacia abajo)
-            Vector2 direction = new Vector2(0, 1); // Cambiado de (0, -1) a (0, 1)
+            
 
-            // Crea una nueva bala con la textura, posición, dirección y velocidad
-            DisparoJugador bala = new DisparoJugador(_bulletTexture, bulletPosition, direction, 5f);
-            _balas.Add(bala); // Añade la bala a la lista de balas activas
-            //musica
+            // Dirección de la bala (hacia abajo en este caso)
+            Vector2 direction = new Vector2(0, 1);  // Cambiar la dirección si es necesario
+
+            // Crea las balas para la izquierda y derecha
+            DisparoJugador balaIzquierda = new DisparoJugador(_bulletTexture, bulletPositionLeft, direction, 5f);
+            
+            
+            
+
+            // Añade las balas a la lista de balas activas
+            _balas.Add(balaIzquierda);
+          
+
+            // Aquí puedes agregar sonidos u otros efectos
             //_playerShootSound.Play();
         }
+
+
 
 
         // Método para reducir la vida del jugador
@@ -126,5 +139,27 @@ namespace ProyectoJuego.Content
                 // Aquí puedes añadir lógica adicional (ej. mostrar pantalla de "Game Over").
             }
         }
+        public void DrawHealthBar(SpriteBatch spriteBatch)
+        {
+            // Dimensiones de la barra de vida
+            int barWidth = 100; // Ancho de la barra
+            int barHeight = 50; // Alto de la barra
+            int healthWidth = (int)((_vida / 10f) * barWidth); // Proporción de vida restante
+
+            // Dibuja la barra de fondo (gris)
+            spriteBatch.Draw(
+                _texture,
+                new Rectangle((int)_position.X, (int)_position.Y - 20, barWidth, barHeight),
+                Color.Gray
+            );
+
+            // Dibuja la barra de vida (verde)
+            spriteBatch.Draw(
+                _texture,
+                new Rectangle((int)_position.X, (int)_position.Y - 20, healthWidth, barHeight),
+                Color.Yellow
+            );
+        }
+        //nuevo que es para poner la barra de vida pero esta mal diseñada 
     }
 }

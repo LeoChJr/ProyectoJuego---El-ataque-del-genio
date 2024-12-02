@@ -10,6 +10,7 @@ namespace ProyectoJuego.Content
 {
     public class Obstaculo
     {
+        // la nueva clase para que aparezcan los obstaculos en el camino 
         
             private Texture2D _texture; // Textura del obstáculo
             private Vector2 _position; // Posición actual del obstáculo
